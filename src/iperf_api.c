@@ -567,6 +567,18 @@ iperf_set_test_client_rsa_pubkey(struct iperf_test *ipt, char *client_rsa_pubkey
 {
     ipt->settings->client_rsa_pubkey = load_pubkey_from_base64(client_rsa_pubkey_base64);
 }
+
+void
+iperf_set_test_server_authorized_users(struct iperf_test *ipt, char *server_authorized_users)
+{
+    ipt->server_authorized_users = server_authorized_users;
+}
+
+void
+iperf_set_test_server_rsa_privkey(struct iperf_test *ipt, char *server_rsa_privkey_base64)
+{
+    ipt->server_rsa_private_key = load_privkey_from_base64(server_rsa_privkey_base64);
+}
 #endif // HAVE_SSL
 
 void
@@ -1428,7 +1440,7 @@ iperf_check_throttle(struct iperf_stream *sp, struct iperf_time *nowP)
     double seconds;
     uint64_t bits_per_second;
 
-    if (sp->test->done)
+    if (sp->test->done || sp->test->settings->rate == 0 || sp->test->settings->burst != 0)
         return;
     iperf_time_diff(&sp->result->start_time_fixed, nowP, &temp_time);
     seconds = iperf_time_in_secs(&temp_time);
@@ -1473,8 +1485,7 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
 		streams_active = 1;
 		test->bytes_sent += r;
 		++test->blocks_sent;
-		if (test->settings->rate != 0 && test->settings->burst == 0)
-		    iperf_check_throttle(sp, &now);
+		iperf_check_throttle(sp, &now);
 		if (multisend > 1 && test->settings->bytes != 0 && test->bytes_sent >= test->settings->bytes)
 		    break;
 		if (multisend > 1 && test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
