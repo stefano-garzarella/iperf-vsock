@@ -87,36 +87,83 @@ iperf_vsock_init(struct iperf_test *test)
 #else /* HAVE_VSOCK */
 
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <linux/vm_sockets.h>
 
 #include "net.h"
 #include "vsock.h"
 
-static int
-parse_cid(const char *cid_str)
+static struct sockaddr *
+vsock_sockaddr(const char *cid_str, int port, int listen, socklen_t *len)
 {
 	char *end = NULL;
-	long cid = strtol(cid_str, &end, 10);
-	if (cid_str != end && *end == '\0') {
-		return cid;
-	} else {
-		fprintf(stderr, "VSOCK - invalid cid: %s\n", cid_str);
-		return -1;
+	long cid;
+
+	if (cid_str == NULL) {
+		return NULL;
 	}
+
+	cid = strtol(cid_str, &end, 10);
+	if (cid_str != end && *end == '\0') {
+		struct sockaddr_vm *svm = malloc(sizeof(struct sockaddr_vm));
+		if (!svm) {
+			return NULL;
+		}
+
+		*len = sizeof(*svm);
+		memset(svm, 0, *len);
+		svm->svm_family = AF_VSOCK;
+		svm->svm_cid = cid;
+		svm->svm_port = port;
+
+		return (struct sockaddr *)svm;
+	}
+
+	/*
+	 * VSOCK over AF_UNIX
+	 * cid_str can contain the UDS path
+	 */
+	struct sockaddr_un *sun = malloc(sizeof(struct sockaddr_un));
+	if (!sun) {
+		return NULL;
+	        }
+
+	*len = sizeof(*sun);
+	memset(sun, 0, *len);
+	sun->sun_family = AF_UNIX;
+	strncpy(sun->sun_path, cid_str, sizeof(sun->sun_path) - 1);
+
+	if (listen) {
+		snprintf(sun->sun_path, sizeof(sun->sun_path), "%s_%d",
+			 cid_str, port);
+	} else {
+		snprintf(sun->sun_path, sizeof(sun->sun_path), "%s", cid_str);
+	}
+
+	/* AF_UNIX path is not removed on socket close */
+	(void)unlink(sun->sun_path);
+
+	return (struct sockaddr *)sun;
 }
 
 int
-vsockannounce(int port)
+vsockannounce(char *local, int port)
 {
+	struct sockaddr *sa;
+	socklen_t sa_len;
 	int listen_fd, opt;
-	struct sockaddr_vm sa_listen = {
-		.svm_family = AF_VSOCK,
-		.svm_cid = VMADDR_CID_ANY,
-	};
 
-	sa_listen.svm_port = port;
+	if (!local) {
+		sa = vsock_sockaddr("-1", port, 1, &sa_len);
+	} else {
+		sa = vsock_sockaddr(local, port, 1, &sa_len);
+	}
 
-	listen_fd = socket(AF_VSOCK, SOCK_STREAM, 0);
+	if (!sa) {
+		goto err;
+	}
+
+	listen_fd = socket(sa->sa_family, SOCK_STREAM, 0);
 	if (listen_fd < 0) {
 		goto err;
 	}
@@ -126,7 +173,7 @@ vsockannounce(int port)
 		goto err_close;
 	}
 
-	if (bind(listen_fd, (struct sockaddr*)&sa_listen, sizeof(sa_listen)) != 0) {
+	if (bind(listen_fd, sa, sa_len) != 0) {
 		goto err_close;
 	}
 
@@ -145,27 +192,47 @@ err:
 int
 vsockdial(char *server, int port, int timeout)
 {
-	int fd, cid;
-	struct sockaddr_vm sa = {
-		.svm_family = AF_VSOCK,
-	};
+	struct sockaddr *sa;
+	socklen_t sa_len;
+	int fd;
 
-	cid = parse_cid(server);
-	if (cid < 0) {
+	sa = vsock_sockaddr(server, port, 0, &sa_len);
+	if (!sa)
 		return -1;
-	}
 
-	sa.svm_cid = cid;
-	sa.svm_port = port;
-
-	fd = socket(AF_VSOCK, SOCK_STREAM, 0);
+	fd = socket(sa->sa_family, SOCK_STREAM, 0);
 	if (fd < 0) {
 		return -1;
 	}
 
-	if (timeout_connect(fd, (struct sockaddr*)&sa, sizeof(sa), timeout) != 0) {
+	if (timeout_connect(fd, sa, sa_len, timeout) != 0) {
 		close(fd);
 		return -1;
+	}
+
+	/*
+	 * VSOCK over AF_UNIX requires a little handshake as defined here:
+	 * https://github.com/firecracker-microvm/firecracker/blob/master/docs/vsock.md
+	 */
+	if (sa->sa_family == AF_UNIX) {
+		char buf[1024];
+
+		/* Send "CONNECT $PORT\n" */
+		snprintf(buf, 1024, "CONNECT %d\n", port);
+
+		if (Nwrite(fd, buf, strnlen(buf, 1024), Pvsock) < 0) {
+			close(fd);
+			return -1;
+		}
+
+		/* Receive "OK $REMOTE_PORT\n" */
+		buf[0] = '\0';
+		while (buf[0] != '\n') {
+			if (Nread(fd, buf, 1, Pvsock) <= 0) {
+				close(fd);
+				return -1;
+			}
+		}
 	}
 
 	return fd;
@@ -227,7 +294,7 @@ iperf_vsock_recv(struct iperf_stream *sp)
 		sp->result->bytes_received_this_interval += r;
 	}
 	else if (sp->test->debug) {
-			printf("Late receive, state = %d\n", sp->test->state);
+		printf("Late receive, state = %d\n", sp->test->state);
 	}
 
 	return r;

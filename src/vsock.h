@@ -30,7 +30,7 @@
 #ifndef        VSOCK_H
 #define        VSOCK_H
 
-int vsockannounce(int port);
+int vsockannounce(char *local, int port);
 int vsockdial(char *server, int port, int timeout);
 
 /**

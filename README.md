@@ -37,6 +37,7 @@ mkdir build
 cd build
 ../configure
 make
+cd src
 ```
 
 (Note: If configure fails, try running `./bootstrap.sh` first)
@@ -58,13 +59,13 @@ sudo qemu-system-x86_64 -m 1G -smp 2 -cpu host -M accel=kvm	\
 ```shell
 # SELinux can block you, so you can write a policy or temporally disable it
 sudo setenforce 0
-iperf-vsock/build/src/iperf3 --vsock -s
+iperf3 --vsock -s
 ```
 
 ### Host: start iperf client
 
 ```shell
-iperf-vsock/build/src/iperf3 --vsock -c ${GUEST_CID}
+iperf3 --vsock -c ${GUEST_CID}
 ```
 
 ### Output
@@ -89,4 +90,44 @@ Connecting to host 3, port 5201
 [  5]   0.00-10.00  sec  14.3 GBytes  12.3 Gbits/sec                  receiver
 
 iperf Done.
+```
+
+## Firecracker's hybrid VSOCK over AF_UNIX
+
+Firecracker, Cloud Hypervisor, and QEMU's vhost-user-vsock implement the
+virtio-vsock device model in userspace, and they allow the host to reach
+the guest using AF_UNIX sockets.
+More info [here](https://github.com/firecracker-microvm/firecracker/blob/master/docs/vsock.md)
+
+`iperf-vsock` supports **VSOCK over AF_UNIX**. In order to use it,
+you can replace the guest CID with the UDS (Unix Domain Socket) base path.
+
+In the following examples, the UDS base path to reach the guest is `/tmp/vm.vsock`
+
+### Host runs iperf client
+
+#### guest
+
+```shell
+iperf3 --vsock -s
+```
+
+#### host
+
+```shell
+iperf3 --vsock -c /tmp/vm.vsock
+```
+
+### Host runs iperf server
+
+#### host
+
+```shell
+iperf3 --vsock -s -B /tmp/vm.vsock
+```
+
+#### guest
+
+```shell
+iperf3 --vsock -c 2
 ```

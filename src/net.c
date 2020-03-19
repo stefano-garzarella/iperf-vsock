@@ -238,7 +238,7 @@ netannounce(int domain, int proto, char *local, int port)
 
 #if defined(HAVE_VSOCK)
     if (domain == AF_VSOCK) {
-        return vsockannounce(port);
+        return vsockannounce(local, port);
     }
 #endif /* HAVE_VSOCK */
 
