@@ -267,26 +267,11 @@ iperf_vsock_listen(struct iperf_test *test)
 int
 iperf_vsock_connect(struct iperf_test *test)
 {
-	int fd, cid;
-	struct sockaddr_vm sa = {
-		.svm_family = AF_VSOCK,
-	};
+	int fd;
 
-	cid = parse_cid(test->server_hostname);
-	if (cid < 0) {
-		return -1;
-	}
-
-	sa.svm_cid = cid;
-	sa.svm_port = test->server_port;
-
-	fd = socket(AF_VSOCK, SOCK_STREAM, 0);
+	fd = vsockdial(test->server_hostname, test->server_port, -1);
 	if (fd < 0) {
 		goto err;
-	}
-
-	if (connect(fd, (struct sockaddr*)&sa, sizeof(sa)) != 0) {
-		goto err_close;
 	}
 
 	/* Send cookie for verification */
