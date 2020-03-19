@@ -1,5 +1,5 @@
 /*
- * iperf, Copyright (c) 2014-2019, The Regents of the University of
+ * iperf, Copyright (c) 2014-2020, The Regents of the University of
  * California, through Lawrence Berkeley National Laboratory (subject
  * to receipt of any required approvals from the U.S. Dept. of
  * Energy).  All rights reserved.
@@ -62,6 +62,10 @@
 #include <sys/param.h>
 #include <sys/cpuset.h>
 #endif /* HAVE_CPUSET_SETAFFINITY */
+
+#if defined(__CYGWIN__) || defined(_WIN32) || defined(_WIN64) || defined(__WINDOWS__)
+#define CPU_SETSIZE __CPU_SETSIZE
+#endif /* __CYGWIN__, _WIN32, _WIN64, __WINDOWS__ */
 
 #if defined(HAVE_SETPROCESSAFFINITYMASK)
 #include <Windows.h>
@@ -553,13 +557,13 @@ iperf_set_test_unit_format(struct iperf_test *ipt, char unit_format)
 void
 iperf_set_test_client_username(struct iperf_test *ipt, char *client_username)
 {
-    ipt->settings->client_username = client_username;
+    ipt->settings->client_username = strdup(client_username);
 }
 
 void
 iperf_set_test_client_password(struct iperf_test *ipt, char *client_password)
 {
-    ipt->settings->client_password = client_password;
+    ipt->settings->client_password = strdup(client_password);
 }
 
 void
@@ -571,7 +575,7 @@ iperf_set_test_client_rsa_pubkey(struct iperf_test *ipt, char *client_rsa_pubkey
 void
 iperf_set_test_server_authorized_users(struct iperf_test *ipt, char *server_authorized_users)
 {
-    ipt->server_authorized_users = server_authorized_users;
+    ipt->server_authorized_users = strdup(server_authorized_users);
 }
 
 void
@@ -608,7 +612,7 @@ iperf_set_test_tos(struct iperf_test *ipt, int tos)
 void
 iperf_set_test_extra_data(struct iperf_test *ipt, char *dat)
 {
-    ipt->extra_data = dat;
+    ipt->extra_data = strdup(dat);
 }
 
 void
@@ -3931,9 +3935,15 @@ diskfile_recv(struct iperf_stream *sp)
 void
 iperf_catch_sigend(void (*handler)(int))
 {
+#ifdef SIGINT
     signal(SIGINT, handler);
+#endif
+#ifdef SIGTERM
     signal(SIGTERM, handler);
+#endif
+#ifdef SIGHUP
     signal(SIGHUP, handler);
+#endif
 }
 
 /**

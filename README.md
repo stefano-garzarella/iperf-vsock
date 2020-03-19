@@ -24,10 +24,12 @@ New options:
 * Linux kernel >= 4.8
 
 ### Clone repository
+
 ```shell
 git clone https://github.com/stefano-garzarella/iperf-vsock
 cd iperf-vsock
 ```
+
 ### Building
 
 ```shell
@@ -39,9 +41,10 @@ make
 
 (Note: If configure fails, try running `./bootstrap.sh` first)
 
-## Example with Fedora 30 (host and guest):
+## Example with Fedora (host and guest):
 
 ### Host: start the VM
+
 ```shell
 GUEST_CID=3
 sudo modprobe vhost_vsock
@@ -51,6 +54,7 @@ sudo qemu-system-x86_64 -m 1G -smp 2 -cpu host -M accel=kvm	\
 ```
 
 ### Guest: start iperf server
+
 ```shell
 # SELinux can block you, so you can write a policy or temporally disable it
 sudo setenforce 0
@@ -58,11 +62,13 @@ iperf-vsock/build/src/iperf3 --vsock -s
 ```
 
 ### Host: start iperf client
+
 ```shell
 iperf-vsock/build/src/iperf3 --vsock -c ${GUEST_CID}
 ```
 
 ### Output
+
 ```shell
 Connecting to host 3, port 5201
 [  5] local 2 port 4008596529 connected to 3 port 5201
