@@ -141,7 +141,8 @@ vsock_sockaddr(const char *cid_str, int port, int listen, socklen_t *len)
 	}
 
 	/* AF_UNIX path is not removed on socket close */
-	(void)unlink(sun->sun_path);
+	if (listen)
+		(void)unlink(sun->sun_path);
 
 	return (struct sockaddr *)sun;
 }
