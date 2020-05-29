@@ -348,6 +348,12 @@ iperf_get_test_no_delay(struct iperf_test *ipt)
     return ipt->no_delay;
 }
 
+int
+iperf_get_test_connect_timeout(struct iperf_test *ipt)
+{
+    return ipt->settings->connect_timeout;
+}
+
 /************** Setter routines for some fields inside iperf_test *************/
 
 void
@@ -630,6 +636,13 @@ iperf_set_test_no_delay(struct iperf_test* ipt, int no_delay)
 {
     ipt->no_delay = no_delay;
 }
+
+void
+iperf_set_test_connect_timeout(struct iperf_test* ipt, int ct)
+{
+    ipt->settings->connect_timeout = ct;
+}
+
 
 /********************** Get/set test protocol structure ***********************/
 
@@ -1308,12 +1321,6 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         else if (iperf_getpass(&client_password, &s, stdin) < 0){
             return -1;
         } 
-
-        if (strlen(client_username) > 20 || strlen(client_password) > 20){
-            i_errno = IESETCLIENTAUTH;
-            return -1;
-        }
-
         if (test_load_pubkey_from_file(client_rsa_public_key) < 0){
             i_errno = IESETCLIENTAUTH;
             return -1;
@@ -1605,15 +1612,18 @@ int test_is_authorized(struct iperf_test *test){
     if (test->settings->authtoken){
         char *username = NULL, *password = NULL;
         time_t ts;
-        decode_auth_setting(test->debug, test->settings->authtoken, test->server_rsa_private_key, &username, &password, &ts);
+        int rc = decode_auth_setting(test->debug, test->settings->authtoken, test->server_rsa_private_key, &username, &password, &ts);
+	if (rc) {
+	    return -1;
+	}
         int ret = check_authentication(username, password, ts, test->server_authorized_users);
         if (ret == 0){
-            iperf_printf(test, report_authetication_successed, username, ts);
+            iperf_printf(test, report_authentication_succeeded, username, ts);
             free(username);
             free(password);
             return 0;
         } else {
-            iperf_printf(test, report_authetication_failed, username, ts);
+            iperf_printf(test, report_authentication_failed, username, ts);
             free(username);
             free(password);
             return -1;
@@ -1778,15 +1788,25 @@ send_parameters(struct iperf_test *test)
 	if (test->repeating_payload)
 	    cJSON_AddNumberToObject(j, "repeating_payload", test->repeating_payload);
 #if defined(HAVE_SSL)
-    if (test->settings->client_username && test->settings->client_password && test->settings->client_rsa_pubkey){
-        encode_auth_setting(test->settings->client_username, test->settings->client_password, test->settings->client_rsa_pubkey, &test->settings->authtoken);
-        cJSON_AddStringToObject(j, "authtoken", test->settings->authtoken);
-    }
+	/* Send authentication parameters */
+	if (test->settings->client_username && test->settings->client_password && test->settings->client_rsa_pubkey){
+	    int rc = encode_auth_setting(test->settings->client_username, test->settings->client_password, test->settings->client_rsa_pubkey, &test->settings->authtoken);
+
+	    if (rc) {
+		cJSON_Delete(j);
+		i_errno = IESENDPARAMS;
+		return -1;
+	    }
+	    
+	    cJSON_AddStringToObject(j, "authtoken", test->settings->authtoken);
+	}
 #endif // HAVE_SSL
 	cJSON_AddStringToObject(j, "client_version", IPERF_VERSION);
 
 	if (test->debug) {
-	    printf("send_parameters:\n%s\n", cJSON_Print(j));
+	    char *str = cJSON_Print(j);
+	    printf("send_parameters:\n%s\n", str);
+	    cJSON_free(str);
 	}
 
 	if (JSON_write(test->ctrl_sck, j) < 0) {
@@ -1816,7 +1836,7 @@ get_parameters(struct iperf_test *test)
             char *str;
             str = cJSON_Print(j);
             printf("get_parameters:\n%s\n", str );
-            free(str);
+            cJSON_free(str);
 	}
 
 	if ((j_p = cJSON_GetObjectItem(j, "tcp")) != NULL)
@@ -1985,7 +2005,7 @@ send_results(struct iperf_test *test)
 	    if (r == 0 && test->debug) {
                 char *str = cJSON_Print(j);
 		printf("send_results\n%s\n", str);
-                free(str);
+                cJSON_free(str);
 	    }
 	    if (r == 0 && JSON_write(test->ctrl_sck, j) < 0) {
 		i_errno = IESENDRESULTS;
@@ -2043,7 +2063,7 @@ get_results(struct iperf_test *test)
 	    if (test->debug) {
                 char *str = cJSON_Print(j);
                 printf("get_results\n%s\n", str);
-                free(str);
+                cJSON_free(str);
 	    }
 
 	    test->remote_cpu_util[0] = j_cpu_util_total->valuedouble;
@@ -2180,7 +2200,7 @@ JSON_write(int fd, cJSON *json)
 	    if (Nwrite(fd, str, hsize, Ptcp) < 0)
 		r = -1;
 	}
-	free(str);
+	cJSON_free(str);
     }
     return r;
 }
@@ -3503,7 +3523,9 @@ iperf_print_results(struct iperf_test *test)
             /* Print server output if we're on the client and it was requested/provided */
             if (test->role == 'c' && iperf_get_test_get_server_output(test) && !test->json_output) {
                 if (test->json_server_output) {
-                    iperf_printf(test, "\nServer JSON output:\n%s\n", cJSON_Print(test->json_server_output));
+		    char *str = cJSON_Print(test->json_server_output);
+                    iperf_printf(test, "\nServer JSON output:\n%s\n", str);
+		    cJSON_free(str);
                     cJSON_Delete(test->json_server_output);
                     test->json_server_output = NULL;
                 }
@@ -4087,6 +4109,8 @@ iperf_json_finish(struct iperf_test *test)
         return -1;
     fprintf(test->outfile, "%s\n", test->json_output_string);
     iflush(test);
+    cJSON_free(test->json_output_string);
+    test->json_output_string = NULL;
     cJSON_Delete(test->json_top);
     test->json_top = test->json_start = test->json_connected = test->json_intervals = test->json_server_output = test->json_end = NULL;
     return 0;

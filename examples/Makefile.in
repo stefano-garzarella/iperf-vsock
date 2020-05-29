@@ -92,6 +92,7 @@ noinst_PROGRAMS = mic$(EXEEXT) mis$(EXEEXT)
 subdir = examples
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/ax_check_openssl.m4 \
+	$(top_srcdir)/config/iperf_config_static_bin.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)

@@ -1,4 +1,4 @@
-# iperf, Copyright (c) 2014-2018, The Regents of the University of
+# iperf, Copyright (c) 2014-2020, The Regents of the University of
 # California, through Lawrence Berkeley National Laboratory (subject
 # to receipt of any required approvals from the U.S. Dept. of
 # Energy).  All rights reserved.
@@ -26,6 +26,7 @@
 # Initialize the autoconf system for the specified tool, version and mailing list
 AC_INIT(iperf, 3.7+, https://github.com/esnet/iperf, iperf, https://software.es.net/iperf/)
 m4_include([config/ax_check_openssl.m4])
+m4_include([config/iperf_config_static_bin.m4])
 AC_LANG(C)
 
 # Specify where the auxiliary files created by configure should go. The config
@@ -35,6 +36,9 @@ AC_CONFIG_AUX_DIR(config)
 
 # Initialize the automake system
 AM_INIT_AUTOMAKE([foreign])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+LT_INIT
+
 AM_MAINTAINER_MODE
 AM_CONFIG_HEADER(src/iperf_config.h)
 
@@ -54,7 +58,7 @@ fi
 
 # Check if enable profiling
 AC_ARG_ENABLE([profiling],
-    AS_HELP_STRING([--enable-profiling], [Enable iperf profiling binary]),
+    AS_HELP_STRING([--enable-profiling], [Enable iperf3 profiling binary]),
     [enable_profiling=yes],
     [:])
 AM_CONDITIONAL([ENABLE_PROFILING], [test x$enable_profiling = xyes])
@@ -89,7 +93,30 @@ AC_C_CONST
 # Check for poll.h (it's in POSIX so everyone should have it?)
 AC_CHECK_HEADERS([poll.h])
 
+# SCTP.  Allow user to disable SCTP support with --without-sctp.
+# Otherwise we try to find whatever support is required.
+try_sctp=true
+AC_ARG_WITH([sctp],
+    [AS_HELP_STRING([--without-sctp],
+        [disable SCTP])],
+    [
+        case "$withval" in
+	y | ye | yes)
+	  ;;
+	n | no)
+	try_sctp=false
+	  ;;
+	*)
+	AC_MSG_ERROR([Invalid --with-sctp value])
+	  ;;
+	esac
+    ], [
+        try_sctp=true
+    ]
+)
+
 # Check for SCTP support
+if $try_sctp; then
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([netinet/sctp.h],
 		 AC_DEFINE([HAVE_SCTP], [1], [Have SCTP support.])
@@ -101,6 +128,7 @@ AC_CHECK_HEADERS([netinet/sctp.h],
 #include <sys/socket.h>
 #endif
 ])
+fi
 
 # Check for VSOCK support
 AC_CHECK_HEADERS([linux/vm_sockets.h],
