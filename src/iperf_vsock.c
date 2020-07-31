@@ -149,7 +149,7 @@ vsock_sockaddr(const char *cid_str, int port, int listen, socklen_t *len)
 }
 
 int
-vsockannounce(char *local, int port)
+vsockannounce(const char *local, int port)
 {
 	struct sockaddr *sa;
 	socklen_t sa_len;
@@ -192,7 +192,7 @@ err:
 }
 
 int
-vsockdial(char *server, int port, int timeout)
+vsockdial(const char *server, int port, int timeout)
 {
 	struct sockaddr *sa;
 	socklen_t sa_len;

@@ -30,8 +30,8 @@
 #ifndef        VSOCK_H
 #define        VSOCK_H
 
-int vsockannounce(char *local, int port);
-int vsockdial(char *server, int port, int timeout);
+int vsockannounce(const char *local, int port);
+int vsockdial(const char *server, int port, int timeout);
 
 /**
  * iperf_vsock_accept -- accepts a new VSOCK connection

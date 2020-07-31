@@ -24,7 +24,7 @@
 # file for complete information.
 
 # Initialize the autoconf system for the specified tool, version and mailing list
-AC_INIT(iperf, 3.7+, https://github.com/esnet/iperf, iperf, https://software.es.net/iperf/)
+AC_INIT(iperf, 3.8.1, https://github.com/esnet/iperf, iperf, https://software.es.net/iperf/)
 m4_include([config/ax_check_openssl.m4])
 m4_include([config/iperf_config_static_bin.m4])
 AC_LANG(C)
@@ -58,9 +58,7 @@ fi
 
 # Check if enable profiling
 AC_ARG_ENABLE([profiling],
-    AS_HELP_STRING([--enable-profiling], [Enable iperf3 profiling binary]),
-    [enable_profiling=yes],
-    [:])
+    AS_HELP_STRING([--enable-profiling], [Enable iperf3 profiling binary]))
 AM_CONDITIONAL([ENABLE_PROFILING], [test x$enable_profiling = xyes])
 
 # Checks for header files.
@@ -119,7 +117,7 @@ AC_ARG_WITH([sctp],
 if $try_sctp; then
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([netinet/sctp.h],
-		 AC_DEFINE([HAVE_SCTP], [1], [Have SCTP support.])
+		 AC_DEFINE([HAVE_SCTP_H], [1], [Have SCTP support.])
 		 AC_SEARCH_LIBS(sctp_bindx, [sctp])
 		 AC_CHECK_TYPES([struct sctp_assoc_value], [], [],
 				[[#include <netinet/sctp.h>]]),
