@@ -23,3 +23,11 @@ test:
     - openssl genrsa -out src/private.pem 2048
     - openssl rsa -in src/private.pem -outform PEM -pubout -out src/public.pem
     - make check
+
+test-tcp-localhost:
+  stage: test
+
+  script:
+    - cd build
+    - ./src/iperf3 -s -D
+    - ./src/iperf3 -V -c localhost
