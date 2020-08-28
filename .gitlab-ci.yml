@@ -1,0 +1,25 @@
+image: gcc
+
+build:
+  stage: build
+
+  before_script:
+    - JOBS=$(expr $(nproc) + 1)
+
+  script:
+    - mkdir build
+    - cd build
+    - ../configure
+    - make -j${JOBS}
+
+  artifacts:
+    paths:
+      - build
+
+test:
+  stage: test
+  script:
+    - cd build
+    - openssl genrsa -out src/private.pem 2048
+    - openssl rsa -in src/private.pem -outform PEM -pubout -out src/public.pem
+    - make check
