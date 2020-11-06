@@ -31,3 +31,11 @@ test-tcp-localhost:
     - cd build
     - ./src/iperf3 -s -D
     - ./src/iperf3 -V -c localhost
+
+test-udp-localhost:
+  stage: test
+
+  script:
+    - cd build
+    - ./src/iperf3 -s -D
+    - ./src/iperf3 -V -u -c localhost
