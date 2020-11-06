@@ -16,10 +16,35 @@ build:
     paths:
       - build
 
-test:
+build-static:
+  stage: build
+
+  before_script:
+    - JOBS=$(expr $(nproc) + 1)
+
+  script:
+    - mkdir build-static
+    - cd build-static
+    - ../configure --enable-static --disable-shared
+    - make -j${JOBS}
+
+  artifacts:
+    paths:
+      - build
+      - build-static
+
+test-build:
   stage: test
   script:
     - cd build
+    - openssl genrsa -out src/private.pem 2048
+    - openssl rsa -in src/private.pem -outform PEM -pubout -out src/public.pem
+    - make check
+
+test-build-static:
+  stage: test
+  script:
+    - cd build-static
     - openssl genrsa -out src/private.pem 2048
     - openssl rsa -in src/private.pem -outform PEM -pubout -out src/public.pem
     - make check
@@ -32,10 +57,26 @@ test-tcp-localhost:
     - ./src/iperf3 -s -D
     - ./src/iperf3 -V -c localhost
 
+test-tcp-localhost-static:
+  stage: test
+
+  script:
+    - cd build-static
+    - ./src/iperf3 -s -D
+    - ./src/iperf3 -V -c localhost
+
 test-udp-localhost:
   stage: test
 
   script:
     - cd build
+    - ./src/iperf3 -s -D
+    - ./src/iperf3 -V -u -c localhost
+
+test-udp-localhost-static:
+  stage: test
+
+  script:
+    - cd build-static
     - ./src/iperf3 -s -D
     - ./src/iperf3 -V -u -c localhost
