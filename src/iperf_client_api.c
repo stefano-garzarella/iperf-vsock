@@ -343,11 +343,10 @@ iperf_connect(struct iperf_test *test)
     }
 
     // set TCP_NODELAY for lower latency on control messages
+    // we don't check an error, since some protocols (e.g. vsock)
+    // don't support TCP_NODELAY
     int flag = 1;
-    if (setsockopt(test->ctrl_sck, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int))) {
-        i_errno = IESETNODELAY;
-        return -1;
-    }
+    setsockopt(test->ctrl_sck, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
 
     if (Nwrite(test->ctrl_sck, test->cookie, COOKIE_SIZE, Ptcp) < 0) {
         i_errno = IESENDCOOKIE;
