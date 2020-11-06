@@ -35,6 +35,8 @@ build-static:
 
 test-build:
   stage: test
+  needs: ["build"]
+
   script:
     - cd build
     - openssl genrsa -out src/private.pem 2048
@@ -43,6 +45,8 @@ test-build:
 
 test-build-static:
   stage: test
+  needs: ["build-static"]
+
   script:
     - cd build-static
     - openssl genrsa -out src/private.pem 2048
@@ -51,6 +55,8 @@ test-build-static:
 
 test-tcp-localhost:
   stage: test
+  needs: ["build"]
+
 
   script:
     - cd build
@@ -59,6 +65,7 @@ test-tcp-localhost:
 
 test-tcp-localhost-static:
   stage: test
+  needs: ["build-static"]
 
   script:
     - cd build-static
@@ -67,6 +74,7 @@ test-tcp-localhost-static:
 
 test-udp-localhost:
   stage: test
+  needs: ["build"]
 
   script:
     - cd build
@@ -75,6 +83,7 @@ test-udp-localhost:
 
 test-udp-localhost-static:
   stage: test
+  needs: ["build-static"]
 
   script:
     - cd build-static
