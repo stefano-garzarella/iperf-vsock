@@ -109,3 +109,23 @@ test-sctp-localhost-static:
     - cd build-static
     - ./src/iperf3 -s -D
     - ./src/iperf3 -V --sctp -c localhost
+
+test-vsock-localhost:
+  stage: test
+  needs: ["build"]
+  allow_failure: true
+
+  script:
+    - cd build
+    - ./src/iperf3 --vsock -s -D
+    - ./src/iperf3 -V --vsock -c 1
+
+test-vsock-localhost-static:
+  stage: test
+  needs: ["build-static"]
+  allow_failure: true
+
+  script:
+    - cd build-static
+    - ./src/iperf3 --vsock -s -D
+    - ./src/iperf3 -V --vsock -c 1
