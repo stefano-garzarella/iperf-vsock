@@ -89,3 +89,23 @@ test-udp-localhost-static:
     - cd build-static
     - ./src/iperf3 -s -D
     - ./src/iperf3 -V -u -c localhost
+
+test-sctp-localhost:
+  stage: test
+  needs: ["build"]
+  allow_failure: true
+
+  script:
+    - cd build
+    - ./src/iperf3 -s -D
+    - ./src/iperf3 -V --sctp -c localhost
+
+test-sctp-localhost-static:
+  stage: test
+  needs: ["build-static"]
+  allow_failure: true
+
+  script:
+    - cd build-static
+    - ./src/iperf3 -s -D
+    - ./src/iperf3 -V --sctp -c localhost
