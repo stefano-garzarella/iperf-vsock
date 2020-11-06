@@ -1,10 +1,11 @@
 image: gcc
+before_script:
+  - JOBS=$(expr $(nproc) + 1)
+  - apt-get update
+  - apt-get install -y libsctp-dev
 
 build:
   stage: build
-
-  before_script:
-    - JOBS=$(expr $(nproc) + 1)
 
   script:
     - mkdir build
@@ -18,9 +19,6 @@ build:
 
 build-static:
   stage: build
-
-  before_script:
-    - JOBS=$(expr $(nproc) + 1)
 
   script:
     - mkdir build-static
