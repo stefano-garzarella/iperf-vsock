@@ -98,13 +98,22 @@ static struct sockaddr *
 vsock_sockaddr(const char *cid_str, int port, int listen, socklen_t *len)
 {
 	char *end = NULL;
+	int sibling = 0;
 	long cid;
 
 	if (cid_str == NULL) {
 		return NULL;
 	}
 
-	cid = strtol(cid_str, &end, 10);
+	/*
+	 * Connection to a sibling VM
+	 * cid_str is of the form "s<cid>"
+	*/
+	if (cid_str[0] == 's') {
+		sibling = 1;
+	}
+
+	cid = sibling ? strtol(cid_str+1, &end, 10) : strtol(cid_str, &end, 10);
 	if (cid_str != end && *end == '\0') {
 		struct sockaddr_vm *svm = malloc(sizeof(struct sockaddr_vm));
 		if (!svm) {
@@ -116,6 +125,9 @@ vsock_sockaddr(const char *cid_str, int port, int listen, socklen_t *len)
 		svm->svm_family = AF_VSOCK;
 		svm->svm_cid = cid;
 		svm->svm_port = port;
+		if (sibling) {
+			svm->svm_flags = VMADDR_FLAG_TO_HOST;
+		}
 
 		return (struct sockaddr *)svm;
 	}
