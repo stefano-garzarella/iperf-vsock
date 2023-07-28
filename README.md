@@ -92,6 +92,16 @@ Connecting to host 3, port 5201
 iperf Done.
 ```
 
+### Sibling VMs
+
+`iperf` between sibling VMs is also possible. In this case, you must use
+the CID of the sibling VM prefixed with `s` (e.g. `s4`) in the `iperf`
+client command. Example:
+
+```shell
+iperf3 --vsock -c s4
+```
+
 ## Firecracker's hybrid VSOCK over AF_UNIX
 
 Firecracker, Cloud Hypervisor, and QEMU's vhost-user-vsock implement the
